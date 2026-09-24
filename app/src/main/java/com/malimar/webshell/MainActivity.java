@@ -40,10 +40,22 @@ public class MainActivity extends Activity {
     private boolean sendJsKey(String key) {
         String safe = key.replace("'", "\\'");
         String js =
-            "(function(){var o={key:'"+safe+"',code:'"+safe+"',bubbles:true,cancelable:true};" +
-            "document.dispatchEvent(new KeyboardEvent('keydown',o));" +
-            "document.activeElement&&document.activeElement.dispatchEvent(new KeyboardEvent('keydown',o));" +
-            "document.dispatchEvent(new KeyboardEvent('keyup',o));})();";
+            "(function(){var el=document.activeElement||document.body;" +
+            "var o={key:'"+safe+"',code:'"+safe+"',bubbles:true,cancelable:true};" +
+            "el.dispatchEvent(new KeyboardEvent('keydown',o));" +
+            "el.dispatchEvent(new KeyboardEvent('keyup',o));})();";
+        web.evaluateJavascript(js, null);
+        return true;
+    }
+
+    private boolean activateFocused() {
+        String js =
+            "(function(){var el=document.activeElement;" +
+            "if(el&&el!==document.body){" +
+            "var o={key:'Enter',code:'Enter',bubbles:true,cancelable:true};" +
+            "el.dispatchEvent(new KeyboardEvent('keydown',o));" +
+            "el.dispatchEvent(new KeyboardEvent('keyup',o));" +
+            "if(typeof el.click==='function')el.click();}})();";
         web.evaluateJavascript(js, null);
         return true;
     }
@@ -57,9 +69,14 @@ public class MainActivity extends Activity {
             case KeyEvent.KEYCODE_DPAD_RIGHT: return sendJsKey("ArrowRight");
             case KeyEvent.KEYCODE_DPAD_CENTER:
             case KeyEvent.KEYCODE_ENTER:
-            case KeyEvent.KEYCODE_NUMPAD_ENTER: return sendJsKey("Enter");
+            case KeyEvent.KEYCODE_NUMPAD_ENTER: return activateFocused();
             case KeyEvent.KEYCODE_BACK:
                 if (web.canGoBack()) { web.goBack(); return true; }
+                String current = web.getUrl();
+                if (current != null && !current.startsWith(HOME)) {
+                    web.loadUrl(HOME);
+                    return true;
+                }
                 return super.dispatchKeyEvent(e);
             default: return super.dispatchKeyEvent(e);
         }
