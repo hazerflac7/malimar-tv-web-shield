@@ -11,6 +11,7 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.webkit.JavascriptInterface;
 
 public class MainActivity extends Activity {
     private WebView web;
@@ -69,6 +70,26 @@ public class MainActivity extends Activity {
             }
         });
         web.setWebChromeClient(new WebChromeClient());
+
+        web.addJavascriptInterface(new Object() {
+            @JavascriptInterface
+            public void playPremiumChannel(String id, String grid) {
+                runOnUiThread(() -> {
+                    try {
+                        String uri = "malimar://channel?id=" +
+                                Uri.encode(id) +
+                                "&grid=" +
+                                Uri.encode(grid);
+
+                        Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(uri));
+                        i.setPackage("com.malimar.webtv");
+                        startActivity(i);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                });
+            }
+        }, "MalimarAndroid");
         web.setFocusable(true);
         web.setFocusableInTouchMode(true);
         web.requestFocus(View.FOCUS_DOWN);
@@ -99,25 +120,19 @@ public class MainActivity extends Activity {
     }
 
     @Override public boolean dispatchKeyEvent(KeyEvent e) {
-        if (e.getAction() != KeyEvent.ACTION_DOWN) return super.dispatchKeyEvent(e);
-        switch (e.getKeyCode()) {
-            case KeyEvent.KEYCODE_DPAD_UP: return sendJsKey("ArrowUp");
-            case KeyEvent.KEYCODE_DPAD_DOWN: return sendJsKey("ArrowDown");
-            case KeyEvent.KEYCODE_DPAD_LEFT: return sendJsKey("ArrowLeft");
-            case KeyEvent.KEYCODE_DPAD_RIGHT: return sendJsKey("ArrowRight");
-            case KeyEvent.KEYCODE_DPAD_CENTER:
-            case KeyEvent.KEYCODE_ENTER:
-            case KeyEvent.KEYCODE_NUMPAD_ENTER: return activateFocused();
-            case KeyEvent.KEYCODE_BACK:
-                // Use the web app's own Back behavior first. This mirrors the
-                // visible Back button that already works correctly on Shield.
-                web.evaluateJavascript(
-                    "(function(){if(typeof goBack==='function'){goBack();return 'handled';}" +
-                    "var b=document.querySelector('#close');if(b){b.click();return 'handled';}" +
-                    "return 'none';})()", null);
-                return true;
-            default: return super.dispatchKeyEvent(e);
+        if (e.getKeyCode() == KeyEvent.KEYCODE_BACK &&
+            e.getAction() == KeyEvent.ACTION_DOWN) {
+
+            web.evaluateJavascript(
+                "(function(){if(typeof goBack==='function'){goBack();return 'handled';}" +
+                "if(history.length>1){history.back();return 'handled';}" +
+                "return 'none';})()", null);
+            return true;
         }
+
+        // Let WebView receive the real Shield/Android TV
+        // DPAD and Enter events.
+        return super.dispatchKeyEvent(e);
     }
 
     @Override protected void onDestroy() {
