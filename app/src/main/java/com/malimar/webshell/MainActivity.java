@@ -2,6 +2,8 @@ package com.malimar.webshell;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.content.Intent;
+import android.net.Uri;
 import android.view.KeyEvent;
 import android.view.View;
 import android.webkit.CookieManager;
@@ -12,7 +14,7 @@ import android.webkit.WebViewClient;
 
 public class MainActivity extends Activity {
     private WebView web;
-    private static final String HOME = "https://hazerflac7.github.io/malimar-tv-web/";
+    private static final String HOME = "http://192.168.1.176:8080/";
 
     @Override public void onCreate(Bundle b) {
         super.onCreate(b);
@@ -29,7 +31,43 @@ public class MainActivity extends Activity {
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(web, true);
 
-        web.setWebViewClient(new WebViewClient());
+        web.setWebViewClient(new WebViewClient() {
+            private boolean handleUrl(String url) {
+                if (url == null) return false;
+
+                try {
+                    if (url.startsWith("malimar://")) {
+                        Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                        i.setPackage("com.malimar.webtv");
+                        startActivity(i);
+                        return true;
+                    }
+
+                    if (url.startsWith("intent://")) {
+                        Intent i = Intent.parseUri(url, Intent.URI_INTENT_SCHEME);
+                        i.setPackage("com.malimar.webtv");
+                        startActivity(i);
+                        return true;
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+
+                return false;
+            }
+
+            @Override
+            public boolean shouldOverrideUrlLoading(
+                    WebView view,
+                    android.webkit.WebResourceRequest request) {
+                return handleUrl(request.getUrl().toString());
+            }
+
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                return handleUrl(url);
+            }
+        });
         web.setWebChromeClient(new WebChromeClient());
         web.setFocusable(true);
         web.setFocusableInTouchMode(true);
