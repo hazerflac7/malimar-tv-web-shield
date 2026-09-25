@@ -71,13 +71,13 @@ public class MainActivity extends Activity {
             case KeyEvent.KEYCODE_ENTER:
             case KeyEvent.KEYCODE_NUMPAD_ENTER: return activateFocused();
             case KeyEvent.KEYCODE_BACK:
-                if (web.canGoBack()) { web.goBack(); return true; }
-                String current = web.getUrl();
-                if (current != null && !current.startsWith(HOME)) {
-                    web.loadUrl(HOME);
-                    return true;
-                }
-                return super.dispatchKeyEvent(e);
+                // Use the web app's own Back behavior first. This mirrors the
+                // visible Back button that already works correctly on Shield.
+                web.evaluateJavascript(
+                    "(function(){if(typeof goBack==='function'){goBack();return 'handled';}" +
+                    "var b=document.querySelector('#close');if(b){b.click();return 'handled';}" +
+                    "return 'none';})()", null);
+                return true;
             default: return super.dispatchKeyEvent(e);
         }
     }
